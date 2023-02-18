@@ -1,0 +1,231 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_04zm7oi" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.7.0" modeler:executionPlatform="Camunda Platform" modeler:executionPlatformVersion="7.18.0">
+  <bpmn:process id="Process_11hza5v" name="FileValidationProcess" isExecutable="true">
+    <bpmn:extensionElements />
+    <bpmn:startEvent id="StartEvent_1" camunda:asyncBefore="true">
+      <bpmn:extensionElements>
+        <camunda:executionListener event="start">
+          <camunda:script scriptFormat="javascript">console.log("Start of the File Validation Process");</camunda:script>
+        </camunda:executionListener>
+      </bpmn:extensionElements>
+      <bpmn:outgoing>Flow_1gmlb1l</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:sequenceFlow id="Flow_1gmlb1l" sourceRef="StartEvent_1" targetRef="Activity_1trbmpl" />
+    <bpmn:serviceTask id="Activity_1trbmpl" name="Validate File">
+      <bpmn:extensionElements>
+        <camunda:connector>
+          <camunda:inputOutput>
+            <camunda:inputParameter name="url">http://localhost:8081/fileValidation</camunda:inputParameter>
+            <camunda:inputParameter name="method">POST</camunda:inputParameter>
+            <camunda:inputParameter name="payload">${execution.getVariable("payload")}</camunda:inputParameter>
+            <camunda:inputParameter name="headers">
+              <camunda:map>
+                <camunda:entry key="content-type">application/json</camunda:entry>
+              </camunda:map>
+            </camunda:inputParameter>
+            <camunda:outputParameter name="response">
+              <camunda:script scriptFormat="javascript">console.log("status:", statusCode);
+console.log("Response:", response);
+console.log("Spin Response:", S(response));</camunda:script>
+            </camunda:outputParameter>
+            <camunda:outputParameter name="fileValidationStatus">${statusCode}</camunda:outputParameter>
+          </camunda:inputOutput>
+          <camunda:connectorId>http-connector</camunda:connectorId>
+        </camunda:connector>
+        <camunda:inputOutput>
+          <camunda:inputParameter name="url">http://localhost:8080/fileValidation</camunda:inputParameter>
+          <camunda:inputParameter name="method">POST</camunda:inputParameter>
+          <camunda:inputParameter name="headers">
+            <camunda:map>
+              <camunda:entry key="Content-type">application/json</camunda:entry>
+              <camunda:entry key="UserId">Karthik</camunda:entry>
+            </camunda:map>
+          </camunda:inputParameter>
+          <camunda:inputParameter name="payload">{
+ "name": "hello"
+}</camunda:inputParameter>
+          <camunda:outputParameter name="payload">${execution.getVariable("payload")}</camunda:outputParameter>
+        </camunda:inputOutput>
+        <camunda:executionListener event="start">
+          <camunda:script scriptFormat="javascript">var fileId = execution.getVariable("fileId");
+console.log(fileId);
+var payload = {
+"fileId": fileId
+};
+console.log(JSON.stringify(payload));
+execution.setVariable("payload", JSON.stringify(payload));</camunda:script>
+        </camunda:executionListener>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_1gmlb1l</bpmn:incoming>
+      <bpmn:incoming>Flow_18nfz9d</bpmn:incoming>
+      <bpmn:outgoing>Flow_1dw1l2x</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="Gateway_1mwf8jw" default="Flow_18eg4rl">
+      <bpmn:incoming>Flow_1dw1l2x</bpmn:incoming>
+      <bpmn:outgoing>Flow_18eg4rl</bpmn:outgoing>
+      <bpmn:outgoing>Flow_001yl75</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:sequenceFlow id="Flow_1dw1l2x" sourceRef="Activity_1trbmpl" targetRef="Gateway_1mwf8jw" />
+    <bpmn:sequenceFlow id="Flow_18eg4rl" sourceRef="Gateway_1mwf8jw" targetRef="Activity_1a9wcqz" />
+    <bpmn:userTask id="Activity_1a9wcqz" name="File Validation Failed" camunda:asyncAfter="true">
+      <bpmn:incoming>Flow_18eg4rl</bpmn:incoming>
+      <bpmn:outgoing>Flow_18nfz9d</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:sequenceFlow id="Flow_001yl75" name="Success" sourceRef="Gateway_1mwf8jw" targetRef="Activity_1jgbpkd">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${fileValidationStatus == 200}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:userTask id="Activity_1jgbpkd" name="Generate Report" camunda:asyncAfter="true">
+      <bpmn:incoming>Flow_001yl75</bpmn:incoming>
+      <bpmn:outgoing>Flow_07k209j</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:sequenceFlow id="Flow_18nfz9d" name="Retry" sourceRef="Activity_1a9wcqz" targetRef="Activity_1trbmpl" />
+    <bpmn:sequenceFlow id="Flow_07k209j" sourceRef="Activity_1jgbpkd" targetRef="Activity_0i5qml5" />
+    <bpmn:serviceTask id="Activity_0i5qml5" name="Call Report Generation Service">
+      <bpmn:extensionElements>
+        <camunda:connector>
+          <camunda:inputOutput>
+            <camunda:inputParameter name="url">http://localhost:8081/generateReport</camunda:inputParameter>
+            <camunda:inputParameter name="method">POST</camunda:inputParameter>
+            <camunda:inputParameter name="headers">
+              <camunda:map>
+                <camunda:entry key="content-type">application/json</camunda:entry>
+              </camunda:map>
+            </camunda:inputParameter>
+            <camunda:inputParameter name="payload">${execution.getVariable("payload")}</camunda:inputParameter>
+            <camunda:outputParameter name="response">
+              <camunda:script scriptFormat="javascript">console.log("Report gen status:", statusCode);
+console.log("Report Gen Response:", response);
+console.log("Report Gen Spin Response:", S(response));</camunda:script>
+            </camunda:outputParameter>
+            <camunda:outputParameter name="reportGenerationStatus">${statusCode}</camunda:outputParameter>
+          </camunda:inputOutput>
+          <camunda:connectorId>http-connector</camunda:connectorId>
+        </camunda:connector>
+        <camunda:inputOutput>
+          <camunda:inputParameter name="url">http://localhost:8080/generateReport</camunda:inputParameter>
+          <camunda:inputParameter name="method">POST</camunda:inputParameter>
+        </camunda:inputOutput>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_07k209j</bpmn:incoming>
+      <bpmn:incoming>Flow_0gws7a3</bpmn:incoming>
+      <bpmn:outgoing>Flow_0dtan44</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="Gateway_1f62xee" default="Flow_0p4ge0f">
+      <bpmn:incoming>Flow_0dtan44</bpmn:incoming>
+      <bpmn:outgoing>Flow_0p4ge0f</bpmn:outgoing>
+      <bpmn:outgoing>Flow_0mrib79</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:sequenceFlow id="Flow_0dtan44" sourceRef="Activity_0i5qml5" targetRef="Gateway_1f62xee" />
+    <bpmn:sequenceFlow id="Flow_0p4ge0f" sourceRef="Gateway_1f62xee" targetRef="Activity_1j8zohn" />
+    <bpmn:sequenceFlow id="Flow_0gws7a3" name="Retry" sourceRef="Activity_1j8zohn" targetRef="Activity_0i5qml5" />
+    <bpmn:sequenceFlow id="Flow_0mrib79" name="Success" sourceRef="Gateway_1f62xee" targetRef="Activity_09mqgz5">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${reportGenerationStatus == 200}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:userTask id="Activity_09mqgz5" name="Complete File Validation Process" camunda:asyncAfter="true">
+      <bpmn:incoming>Flow_0mrib79</bpmn:incoming>
+      <bpmn:outgoing>Flow_08jpgvg</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:endEvent id="Event_1kx9xiz">
+      <bpmn:incoming>Flow_08jpgvg</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_08jpgvg" sourceRef="Activity_09mqgz5" targetRef="Event_1kx9xiz" />
+    <bpmn:userTask id="Activity_1j8zohn" name="Report Generation Failed" camunda:asyncAfter="true">
+      <bpmn:incoming>Flow_0p4ge0f</bpmn:incoming>
+      <bpmn:outgoing>Flow_0gws7a3</bpmn:outgoing>
+    </bpmn:userTask>
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Process_11hza5v">
+      <bpmndi:BPMNShape id="_BPMNShape_StartEvent_2" bpmnElement="StartEvent_1">
+        <dc:Bounds x="179" y="99" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1c47djn_di" bpmnElement="Activity_1trbmpl">
+        <dc:Bounds x="270" y="77" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_1mwf8jw_di" bpmnElement="Gateway_1mwf8jw" isMarkerVisible="true">
+        <dc:Bounds x="425" y="92" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0i0f6yh_di" bpmnElement="Activity_1a9wcqz">
+        <dc:Bounds x="400" y="220" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0l53zx8_di" bpmnElement="Activity_1jgbpkd">
+        <dc:Bounds x="530" y="77" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1aqjsz8_di" bpmnElement="Activity_0i5qml5">
+        <dc:Bounds x="690" y="77" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_1f62xee_di" bpmnElement="Gateway_1f62xee" isMarkerVisible="true">
+        <dc:Bounds x="855" y="92" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1ssywrh_di" bpmnElement="Activity_09mqgz5">
+        <dc:Bounds x="970" y="77" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_1kx9xiz_di" bpmnElement="Event_1kx9xiz">
+        <dc:Bounds x="1142" y="99" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0a24atx_di" bpmnElement="Activity_1j8zohn">
+        <dc:Bounds x="830" y="220" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_1gmlb1l_di" bpmnElement="Flow_1gmlb1l">
+        <di:waypoint x="215" y="117" />
+        <di:waypoint x="270" y="117" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1dw1l2x_di" bpmnElement="Flow_1dw1l2x">
+        <di:waypoint x="370" y="117" />
+        <di:waypoint x="425" y="117" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_18eg4rl_di" bpmnElement="Flow_18eg4rl">
+        <di:waypoint x="450" y="142" />
+        <di:waypoint x="450" y="220" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_001yl75_di" bpmnElement="Flow_001yl75">
+        <di:waypoint x="475" y="117" />
+        <di:waypoint x="530" y="117" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="482" y="99" width="42" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_18nfz9d_di" bpmnElement="Flow_18nfz9d">
+        <di:waypoint x="400" y="260" />
+        <di:waypoint x="320" y="260" />
+        <di:waypoint x="320" y="157" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="347" y="242" width="27" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_07k209j_di" bpmnElement="Flow_07k209j">
+        <di:waypoint x="630" y="117" />
+        <di:waypoint x="690" y="117" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0dtan44_di" bpmnElement="Flow_0dtan44">
+        <di:waypoint x="790" y="117" />
+        <di:waypoint x="855" y="117" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0p4ge0f_di" bpmnElement="Flow_0p4ge0f">
+        <di:waypoint x="880" y="142" />
+        <di:waypoint x="880" y="220" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0gws7a3_di" bpmnElement="Flow_0gws7a3">
+        <di:waypoint x="830" y="260" />
+        <di:waypoint x="740" y="260" />
+        <di:waypoint x="740" y="157" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="772" y="242" width="27" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0mrib79_di" bpmnElement="Flow_0mrib79">
+        <di:waypoint x="905" y="117" />
+        <di:waypoint x="970" y="117" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="917" y="99" width="42" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_08jpgvg_di" bpmnElement="Flow_08jpgvg">
+        <di:waypoint x="1070" y="117" />
+        <di:waypoint x="1142" y="117" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
